@@ -9,7 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
 const EMAIL = "anushka1784.be23@chitkara.edu.in";
 
 // ---------------- HEALTH ----------------
@@ -140,14 +139,11 @@ async function aiAnswer(question) {
     const text =
       response.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // single word response
-    return text.trim().split(/\s+/)[0];
+    return text.trim().split(/\s+/)[0]; // single word
   } catch {
-    // graceful fallback — NO CRASH
-    return "Unknown";
+    return "Unknown"; // graceful fallback
   }
 }
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ✅ REQUIRED FOR VERCEL
+export default app;
