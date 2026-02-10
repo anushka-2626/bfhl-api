@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const EMAIL = "YOUR_CHITKARA_EMAIL"; // 🔴 CHANGE THIS
+const EMAIL = "anushka1784.be23@chitkara.edu.in"; 
 
 // ---------- HEALTH CHECK ----------
 app.get("/health", (req, res) => {
