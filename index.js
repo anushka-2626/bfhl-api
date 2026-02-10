@@ -10,21 +10,23 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const EMAIL = "anushka1784.be23@chitkara.edu.in"; 
+const EMAIL = "anushka1784.be23@chitkara.edu.in";
 
-// ---------- HEALTH CHECK ----------
+// ---------------- HEALTH ----------------
 app.get("/health", (req, res) => {
-  res.status(200).json({
+  return res.status(200).json({
     is_success: true,
     official_email: EMAIL
   });
 });
 
-// ---------- MAIN API ----------
+// ---------------- BFHL ----------------
 app.post("/bfhl", async (req, res) => {
   try {
-    const keys = Object.keys(req.body);
+    const body = req.body;
+    const keys = Object.keys(body);
 
+    // exactly ONE key required
     if (keys.length !== 1) {
       return res.status(400).json({
         is_success: false,
@@ -33,33 +35,45 @@ app.post("/bfhl", async (req, res) => {
     }
 
     const key = keys[0];
-    const value = req.body[key];
-    let data;
+    const value = body[key];
+    let result;
 
     switch (key) {
       case "fibonacci":
-        if (!Number.isInteger(value) || value < 0) throw new Error();
-        data = fibonacci(value);
+        if (!Number.isInteger(value) || value < 0) {
+          return invalid(res);
+        }
+        result = fibonacci(value);
         break;
 
       case "prime":
-        if (!Array.isArray(value)) throw new Error();
-        data = value.filter(isPrime);
+        if (!Array.isArray(value) || value.length === 0) {
+          return invalid(res);
+        }
+        result = value.filter(
+          n => Number.isInteger(n) && n > 1 && isPrime(n)
+        );
         break;
 
       case "lcm":
-        if (!Array.isArray(value)) throw new Error();
-        data = value.reduce(lcm);
+        if (!Array.isArray(value) || value.length < 2) {
+          return invalid(res);
+        }
+        result = value.reduce((a, b) => lcm(a, b));
         break;
 
       case "hcf":
-        if (!Array.isArray(value)) throw new Error();
-        data = value.reduce(gcd);
+        if (!Array.isArray(value) || value.length < 2) {
+          return invalid(res);
+        }
+        result = value.reduce((a, b) => gcd(a, b));
         break;
 
       case "AI":
-        if (typeof value !== "string") throw new Error();
-        data = await aiAnswer(value);
+        if (typeof value !== "string" || value.trim() === "") {
+          return invalid(res);
+        }
+        result = await aiAnswer(value);
         break;
 
       default:
@@ -69,23 +83,29 @@ app.post("/bfhl", async (req, res) => {
         });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       is_success: true,
       official_email: EMAIL,
-      data
+      data: result
     });
 
   } catch (err) {
-    res.status(400).json({
+    return res.status(500).json({
       is_success: false,
-      error: "Invalid input"
+      error: "Server error"
     });
   }
 });
 
-// ---------- UTIL FUNCTIONS ----------
+// ---------------- HELPERS ----------------
+const invalid = (res) =>
+  res.status(400).json({
+    is_success: false,
+    error: "Invalid input"
+  });
+
 function fibonacci(n) {
-  let arr = [0, 1];
+  const arr = [0, 1];
   for (let i = 2; i < n; i++) {
     arr.push(arr[i - 1] + arr[i - 2]);
   }
@@ -93,7 +113,6 @@ function fibonacci(n) {
 }
 
 function isPrime(n) {
-  if (n < 2) return false;
   for (let i = 2; i <= Math.sqrt(n); i++) {
     if (n % i === 0) return false;
   }
@@ -108,20 +127,25 @@ function lcm(a, b) {
   return Math.abs(a * b) / gcd(a, b);
 }
 
-// ---------- GEMINI AI ----------
+// ---------------- AI ----------------
 async function aiAnswer(question) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  try {
+    const url =
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
-  const response = await axios.post(url, {
-    contents: [
-      {
-        parts: [{ text: question }]
-      }
-    ]
-  });
+    const response = await axios.post(url, {
+      contents: [{ parts: [{ text: question }] }]
+    });
 
-  const text = response.data.candidates[0].content.parts[0].text;
-  return text.split(/\s+/)[0]; // single word
+    const text =
+      response.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // single word response
+    return text.trim().split(/\s+/)[0];
+  } catch {
+    // graceful fallback — NO CRASH
+    return "Unknown";
+  }
 }
 
 app.listen(PORT, () => {
